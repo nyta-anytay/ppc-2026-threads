@@ -61,44 +61,64 @@ int LazarevaATestTaskTBB::NextPowerOfTwo(int n) {
 std::vector<double> LazarevaATestTaskTBB::PadMatrix(const std::vector<double> &m, int old_n, int new_n) {
   const auto new_size = static_cast<size_t>(new_n) * static_cast<size_t>(new_n);
   std::vector<double> result(new_size, 0.0);
-  for (int i = 0; i < old_n; ++i) {
-    for (int j = 0; j < old_n; ++j) {
-      const auto dst = (static_cast<ptrdiff_t>(i) * new_n) + j;
-      const auto src = (static_cast<ptrdiff_t>(i) * old_n) + j;
-      result[static_cast<size_t>(dst)] = m[static_cast<size_t>(src)];
+
+  oneapi::tbb::parallel_for(oneapi::tbb::blocked_range<int>(0, old_n),
+                            [&](const oneapi::tbb::blocked_range<int> &range) {
+    for (int i = range.begin(); i < range.end(); ++i) {
+      for (int j = 0; j < old_n; ++j) {
+        const auto dst = (static_cast<ptrdiff_t>(i) * new_n) + j;
+        const auto src = (static_cast<ptrdiff_t>(i) * old_n) + j;
+        result[static_cast<size_t>(dst)] = m[static_cast<size_t>(src)];
+      }
     }
-  }
+  });
+
   return result;
 }
 
 std::vector<double> LazarevaATestTaskTBB::UnpadMatrix(const std::vector<double> &m, int old_n, int new_n) {
   const auto new_size = static_cast<size_t>(new_n) * static_cast<size_t>(new_n);
   std::vector<double> result(new_size);
-  for (int i = 0; i < new_n; ++i) {
-    for (int j = 0; j < new_n; ++j) {
-      const auto dst = (static_cast<ptrdiff_t>(i) * new_n) + j;
-      const auto src = (static_cast<ptrdiff_t>(i) * old_n) + j;
-      result[static_cast<size_t>(dst)] = m[static_cast<size_t>(src)];
+
+  oneapi::tbb::parallel_for(oneapi::tbb::blocked_range<int>(0, new_n),
+                            [&](const oneapi::tbb::blocked_range<int> &range) {
+    for (int i = range.begin(); i < range.end(); ++i) {
+      for (int j = 0; j < new_n; ++j) {
+        const auto dst = (static_cast<ptrdiff_t>(i) * new_n) + j;
+        const auto src = (static_cast<ptrdiff_t>(i) * old_n) + j;
+        result[static_cast<size_t>(dst)] = m[static_cast<size_t>(src)];
+      }
     }
-  }
+  });
+
   return result;
 }
 
 std::vector<double> LazarevaATestTaskTBB::Add(const std::vector<double> &a, const std::vector<double> &b, int n) {
   const auto size = static_cast<size_t>(n) * static_cast<size_t>(n);
   std::vector<double> result(size);
-  for (size_t i = 0; i < size; ++i) {
-    result[i] = a[i] + b[i];
-  }
+
+  oneapi::tbb::parallel_for(oneapi::tbb::blocked_range<size_t>(0, size),
+                            [&](const oneapi::tbb::blocked_range<size_t> &range) {
+    for (size_t i = range.begin(); i < range.end(); ++i) {
+      result[i] = a[i] + b[i];
+    }
+  });
+
   return result;
 }
 
 std::vector<double> LazarevaATestTaskTBB::Sub(const std::vector<double> &a, const std::vector<double> &b, int n) {
   const auto size = static_cast<size_t>(n) * static_cast<size_t>(n);
   std::vector<double> result(size);
-  for (size_t i = 0; i < size; ++i) {
-    result[i] = a[i] - b[i];
-  }
+
+  oneapi::tbb::parallel_for(oneapi::tbb::blocked_range<size_t>(0, size),
+                            [&](const oneapi::tbb::blocked_range<size_t> &range) {
+    for (size_t i = range.begin(); i < range.end(); ++i) {
+      result[i] = a[i] - b[i];
+    }
+  });
+
   return result;
 }
 
@@ -111,15 +131,18 @@ void LazarevaATestTaskTBB::Split(const std::vector<double> &parent, int n, std::
   a21.resize(half_size);
   a22.resize(half_size);
 
-  for (int i = 0; i < half; ++i) {
-    for (int j = 0; j < half; ++j) {
-      const auto idx = static_cast<size_t>((static_cast<ptrdiff_t>(i) * half) + j);
-      a11[idx] = parent[static_cast<size_t>((static_cast<ptrdiff_t>(i) * n) + j)];
-      a12[idx] = parent[static_cast<size_t>((static_cast<ptrdiff_t>(i) * n) + j + half)];
-      a21[idx] = parent[static_cast<size_t>((static_cast<ptrdiff_t>(i + half) * n) + j)];
-      a22[idx] = parent[static_cast<size_t>((static_cast<ptrdiff_t>(i + half) * n) + j + half)];
+  oneapi::tbb::parallel_for(oneapi::tbb::blocked_range<int>(0, half),
+                            [&](const oneapi::tbb::blocked_range<int> &range) {
+    for (int i = range.begin(); i < range.end(); ++i) {
+      for (int j = 0; j < half; ++j) {
+        const auto idx = static_cast<size_t>((static_cast<ptrdiff_t>(i) * half) + j);
+        a11[idx] = parent[static_cast<size_t>((static_cast<ptrdiff_t>(i) * n) + j)];
+        a12[idx] = parent[static_cast<size_t>((static_cast<ptrdiff_t>(i) * n) + j + half)];
+        a21[idx] = parent[static_cast<size_t>((static_cast<ptrdiff_t>(i + half) * n) + j)];
+        a22[idx] = parent[static_cast<size_t>((static_cast<ptrdiff_t>(i + half) * n) + j + half)];
+      }
     }
-  }
+  });
 }
 
 std::vector<double> LazarevaATestTaskTBB::Merge(const std::vector<double> &c11, const std::vector<double> &c12,
@@ -128,15 +151,18 @@ std::vector<double> LazarevaATestTaskTBB::Merge(const std::vector<double> &c11, 
   const auto full_size = static_cast<size_t>(full) * static_cast<size_t>(full);
   std::vector<double> result(full_size);
 
-  for (int i = 0; i < n; ++i) {
-    for (int j = 0; j < n; ++j) {
-      const auto src = static_cast<size_t>((static_cast<ptrdiff_t>(i) * n) + j);
-      result[static_cast<size_t>((static_cast<ptrdiff_t>(i) * full) + j)] = c11[src];
-      result[static_cast<size_t>((static_cast<ptrdiff_t>(i) * full) + j + n)] = c12[src];
-      result[static_cast<size_t>((static_cast<ptrdiff_t>(i + n) * full) + j)] = c21[src];
-      result[static_cast<size_t>((static_cast<ptrdiff_t>(i + n) * full) + j + n)] = c22[src];
+  oneapi::tbb::parallel_for(oneapi::tbb::blocked_range<int>(0, n), [&](const oneapi::tbb::blocked_range<int> &range) {
+    for (int i = range.begin(); i < range.end(); ++i) {
+      for (int j = 0; j < n; ++j) {
+        const auto src = static_cast<size_t>((static_cast<ptrdiff_t>(i) * n) + j);
+        result[static_cast<size_t>((static_cast<ptrdiff_t>(i) * full) + j)] = c11[src];
+        result[static_cast<size_t>((static_cast<ptrdiff_t>(i) * full) + j + n)] = c12[src];
+        result[static_cast<size_t>((static_cast<ptrdiff_t>(i + n) * full) + j)] = c21[src];
+        result[static_cast<size_t>((static_cast<ptrdiff_t>(i + n) * full) + j + n)] = c22[src];
+      }
     }
-  }
+  });
+
   return result;
 }
 
